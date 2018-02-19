@@ -1,0 +1,9 @@
+[package]
+name = "ringtail"
+version = "0.1.0"
+description = "Efficient ring buffer for byte buffers, FIFO queues, and SPSC channels"
+authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
+license = "MIT"
+keywords = ["buffer", "fifo", "queue"]
+categories = ["data-structures", "concurrency"]
+repository = "https://github.com/sagebind/ringtail"
