@@ -1,4 +1,5 @@
 //! Provides functions for dynamic array manipulation.
+use std::cmp::Ordering;
 
 /// Allocate an uninitialized array of a given size.
 ///
@@ -9,10 +10,43 @@ pub unsafe fn allocate<T>(len: usize) -> Box<[T]> {
     vec.into_boxed_slice()
 }
 
-/// Copy elements from one array to another in a range.
+/// Copy as many elements as possible from one array to another.
 ///
-/// Panics if there are less than `len` items in either of the given regions.
+/// Returns the number of elements copied.
 #[inline]
-pub fn copy<T: Copy>(src: &[T], src_offset: usize, dest: &mut [T], dest_offset: usize, len: usize) {
-    (&mut dest[dest_offset .. dest_offset + len]).copy_from_slice(&src[src_offset .. src_offset + len])
+pub fn copy<T: Copy>(src: &[T], dest: &mut [T]) -> usize {
+    let len = src.len().min(dest.len());
+    (&mut dest[..len]).copy_from_slice(&src[..len]);
+    len
+}
+
+/// Extension trait for slices for working with wrapping ranges and indicies.
+pub trait WrappingSlice<T> {
+    /// Gets a pair of slices in the given range, wrapping around length.
+    fn wrapping_range(&self, from: usize, to: usize) -> (&[T], &[T]);
+
+    /// Gets a pair of mutable slices in the given range, wrapping around length.
+    fn wrapping_range_mut(&mut self, from: usize, to: usize) -> (&mut [T], &mut [T]);
+}
+
+impl<T> WrappingSlice<T> for [T] {
+    fn wrapping_range(&self, from: usize, to: usize) -> (&[T], &[T]) {
+        match from.cmp(&to) {
+            Ordering::Equal => (&[], &[]),
+            Ordering::Less => (&self[from..to], &[]),
+            Ordering::Greater => (&self[from..], &self[..to]),
+        }
+    }
+
+    fn wrapping_range_mut(&mut self, from: usize, to: usize) -> (&mut [T], &mut [T]) {
+        match from.cmp(&to) {
+            Ordering::Equal => (&mut [], &mut []),
+            Ordering::Less => (&mut self[from..to], &mut []),
+            Ordering::Greater => {
+                let (mid, right) = self.split_at_mut(from);
+                let left = mid.split_at_mut(to).0;
+                (left, right)
+            },
+        }
+    }
 }
