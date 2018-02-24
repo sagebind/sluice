@@ -1,14 +1,6 @@
 use std::io::{self, Read, Write};
-use std::mem;
-use std::slice;
 
-
-/// Macro for making memory copies more readable.
-macro_rules! copy {
-    ($src:expr, $src_start:expr, $dest:expr, $dest_start:expr, $len:expr) => {
-        (&mut $dest[$dest_start..$dest_start+$len]).copy_from_slice(&$src[$src_start..$src_start+$len])
-    };
-}
+mod arrays;
 
 
 /// Growable byte buffer implemented as a ring buffer.
@@ -39,22 +31,10 @@ impl Buffer {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             array: unsafe {
-                Buffer::allocate(capacity.next_power_of_two())
+                arrays::allocate(capacity.next_power_of_two())
             },
             head: 0,
             len: 0,
-        }
-    }
-
-    /// Create a new buffer containing the given bytes.
-    pub fn from<B: Into<Vec<u8>>>(bytes: B) -> Self {
-        let bytes = bytes.into();
-        let len = bytes.len();
-
-        Self {
-            array: bytes.into_boxed_slice(),
-            head: 0,
-            len: len,
         }
     }
 
@@ -64,14 +44,22 @@ impl Buffer {
         self.len == 0
     }
 
+    /// Returns the number of bytes in the buffer.
     #[inline]
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Returns the current capacity of the buffer in bytes.
     #[inline]
     pub fn capacity(&self) -> usize {
         self.array.len()
+    }
+
+    /// Calculate the internal offset of the given byte position.
+    #[inline]
+    fn offset(&self, index: usize) -> usize {
+        (index + self.head) & (self.capacity() - 1)
     }
 
     /// Copy bytes from the front of the buffer into the given slice.
@@ -91,13 +79,13 @@ impl Buffer {
         let tail = self.offset(count);
         if tail <= self.head {
             let head_len = self.capacity() - self.head;
-            copy!(self.array, self.head, dest, 0, head_len);
-            copy!(self.array, 0, dest, head_len, tail);
+            arrays::copy(&self.array, self.head, dest, 0, head_len);
+            arrays::copy(&self.array, 0, dest, head_len, tail);
         }
 
         // Buffer is contiguous; copy in one step.
         else {
-            copy!(self.array, self.head, dest, 0, count);
+            arrays::copy(&self.array, self.head, dest, 0, count);
         }
 
         count
@@ -126,7 +114,7 @@ impl Buffer {
         if new_len > self.capacity() {
             let new_capacity = new_len.next_power_of_two();
             let mut new_array = unsafe {
-                Self::allocate(new_capacity)
+                arrays::allocate(new_capacity)
             };
 
             self.copy_to(&mut new_array);
@@ -141,11 +129,11 @@ impl Buffer {
 
         if copy_to_head > 0 {
             let tail = self.offset(self.len);
-            copy!(src, 0, self.array, tail, copy_to_head);
+            arrays::copy(src, 0, &mut self.array, tail, copy_to_head);
         }
 
         if copy_to_tail > 0 {
-            copy!(src, copy_to_head, self.array, 0, copy_to_tail);
+            arrays::copy(src, copy_to_head, &mut self.array, 0, copy_to_tail);
         }
 
         self.len = new_len;
@@ -163,42 +151,6 @@ impl Buffer {
     pub fn clear(&mut self) {
         self.head = 0;
         self.len = 0;
-    }
-
-    /// Calculate the internal offset of the given byte position.
-    fn offset(&self, index: usize) -> usize {
-        let mut offset = self.head + index;
-
-        if offset >= self.capacity() {
-            offset -= self.capacity();
-        }
-
-        offset
-    }
-
-    /// Allocate an array of memory on the heap.
-    ///
-    /// Note that the contents of the array are not initialized and the values are undefined.
-    unsafe fn allocate(size: usize) -> Box<[u8]> {
-        let mut vec = Vec::<u8>::with_capacity(size);
-        let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
-        mem::forget(vec);
-        Box::from_raw(slice)
-    }
-}
-
-impl From<Buffer> for Vec<u8> {
-    fn from(buffer: Buffer) -> Vec<u8> {
-        let mut slice = unsafe {
-            Buffer::allocate(buffer.len)
-        };
-        let len = buffer.copy_to(&mut slice);
-
-        unsafe {
-            let vec = Vec::from_raw_parts(slice.as_mut_ptr(), len, slice.len());
-            mem::forget(slice);
-            vec
-        }
     }
 }
 
@@ -295,18 +247,5 @@ mod tests {
         let mut out = [0; 11];
         buffer.copy_to(&mut out);
         assert!(&out == b"hello world");
-    }
-
-    #[test]
-    fn vec_from_buffer() {
-        let mut buffer = Buffer::new();
-        let bytes = b"hello world";
-        buffer.push(bytes);
-
-        assert!(buffer.len() == bytes.len());
-
-        let vec = Vec::from(buffer);
-
-        assert!(&vec == bytes);
     }
 }
