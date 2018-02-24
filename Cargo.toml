@@ -1,6 +1,6 @@
 [package]
 name = "ringtail"
-version = "0.1.0"
+version = "0.1.1"
 description = "Efficient ring buffer for byte buffers, FIFO queues, and SPSC channels"
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
