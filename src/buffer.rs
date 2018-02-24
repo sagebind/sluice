@@ -83,12 +83,7 @@ impl<T: Copy> Buffer<T> {
         let head_index = self.mask(self.head);
         let tail_index = self.mask(self.tail);
 
-        let slices = if head_index == tail_index {
-            let slices = self.array.split_at_mut(head_index);
-            (slices.1, slices.0)
-        } else {
-            self.array.wrapping_range_mut(tail_index, head_index)
-        };
+        let slices = self.array.wrapping_range_mut(tail_index, head_index);
 
         let mut pushed = arrays::copy(src, slices.0);
         pushed += arrays::copy(&src[pushed..], slices.1);
@@ -110,6 +105,10 @@ impl<T: Copy> Buffer<T> {
     /// Returns the number of elements copied. If there are less elements in the buffer than the length of `dest`, then
     /// only part of `dest` will be written to.
     pub fn copy_to(&self, dest: &mut [T]) -> usize {
+        if self.is_empty() {
+            return 0;
+        }
+
         let slices = self.array
             .wrapping_range(self.mask(self.head), self.mask(self.tail));
 

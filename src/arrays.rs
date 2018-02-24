@@ -1,5 +1,4 @@
 //! Provides functions for dynamic array manipulation.
-use std::cmp::Ordering;
 
 /// Allocate an uninitialized array of a given size.
 ///
@@ -31,22 +30,20 @@ pub trait WrappingSlice<T> {
 
 impl<T> WrappingSlice<T> for [T] {
     fn wrapping_range(&self, from: usize, to: usize) -> (&[T], &[T]) {
-        match from.cmp(&to) {
-            Ordering::Equal => (&[], &[]),
-            Ordering::Less => (&self[from..to], &[]),
-            Ordering::Greater => (&self[from..], &self[..to]),
+        if from < to {
+            (&self[from..to], &[])
+        } else {
+            (&self[from..], &self[..to])
         }
     }
 
     fn wrapping_range_mut(&mut self, from: usize, to: usize) -> (&mut [T], &mut [T]) {
-        match from.cmp(&to) {
-            Ordering::Equal => (&mut [], &mut []),
-            Ordering::Less => (&mut self[from..to], &mut []),
-            Ordering::Greater => {
-                let (mid, right) = self.split_at_mut(from);
-                let left = mid.split_at_mut(to).0;
-                (left, right)
-            },
+        if from < to {
+            (&mut self[from..to], &mut [])
+        } else {
+            let (mid, right) = self.split_at_mut(from);
+            let left = mid.split_at_mut(to).0;
+            (right, left)
         }
     }
 }
