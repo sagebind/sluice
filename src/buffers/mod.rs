@@ -50,5 +50,5 @@ pub trait WritableBuffer<T>: Buffer<T> {
     /// Copy the given elements and insert them into the back of the buffer.
     ///
     /// Returns the number of elements pushed.
-    fn push(&mut self, src: &[T]) -> usize;
+    fn push(&mut self, src: &[T]) -> usize where T: Copy;
 }

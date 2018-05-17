@@ -12,7 +12,7 @@ Add this to your Cargo.toml file:
 
 ```toml
 [dependencies]
-ringtail = "0.1"
+ringtail = "0.2"
 ```
 
 ## License
