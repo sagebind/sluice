@@ -2,6 +2,7 @@
 use arrays;
 use arrays::CircularArray;
 use buffers::{Buffer, ReadableBuffer, WritableBuffer};
+use std::cell::UnsafeCell;
 use std::sync::Arc;
 use std::sync::atomic::*;
 
@@ -46,8 +47,16 @@ impl<T: Copy> ReadableBuffer<T> for Reader<T> {
         let head = self.inner.head.load(Ordering::SeqCst);
         let tail = self.inner.tail.load(Ordering::SeqCst);
 
-        let slices = self.inner.array.as_slices(head..tail);
-        arrays::copy_seq(&slices, dest)
+        if head == tail {
+            return 0;
+        }
+
+        unsafe {
+            let array = &*self.inner.array.get();
+
+            let slices = array.as_slices(head..tail);
+            arrays::copy_from_seq(&slices, dest)
+        }
     }
 
     fn consume(&mut self, count: usize) -> usize {
@@ -86,12 +95,15 @@ impl<T: Copy> WritableBuffer<T> for Writer<T> {
         let head = self.inner.head.load(Ordering::SeqCst);
         let tail = self.inner.tail.load(Ordering::SeqCst);
 
-        unsafe {
-            let array_mut = &self.inner.array as *const _ as *mut CircularArray<T>;
-            let slices = (&mut *array_mut).as_slices_mut(tail..head);
+        if tail.wrapping_sub(head) == self.capacity() {
+            return 0;
+        }
 
-            let mut pushed = arrays::copy(src, slices[0]);
-            pushed += arrays::copy(&src[pushed..], slices[1]);
+        unsafe {
+            let array = &mut *self.inner.array.get();
+
+            let mut slices = array.as_slices_mut(tail..head);
+            let pushed = arrays::copy_to_seq(src, &mut slices);
 
             self.inner.tail.fetch_add(pushed, Ordering::SeqCst);
             pushed
@@ -101,7 +113,7 @@ impl<T: Copy> WritableBuffer<T> for Writer<T> {
 
 /// Contains the shared data between the reader and writer.
 struct Inner<T> {
-    array: CircularArray<T>,
+    array: UnsafeCell<CircularArray<T>>,
     head: AtomicUsize,
     tail: AtomicUsize,
 }
@@ -110,7 +122,7 @@ impl<T> Inner<T> {
     fn new(capacity: usize) -> Self {
         Self {
             array: unsafe {
-                CircularArray::uninitialized(capacity)
+                UnsafeCell::new(CircularArray::uninitialized(capacity))
             },
             head: AtomicUsize::new(0),
             tail: AtomicUsize::new(0),
@@ -130,7 +142,9 @@ impl<T> Buffer<T> for Inner<T> {
 
     #[inline]
     fn capacity(&self) -> usize {
-        self.array.len()
+        unsafe {
+            (&*self.array.get()).len()
+        }
     }
 
     fn clear(&mut self) {
@@ -166,6 +180,19 @@ mod tests {
 
         assert_eq!(buffer.0.len(), bytes.len());
         assert_eq!(buffer.1.len(), bytes.len());
+    }
+
+    #[test]
+    fn test_push_more_than_buffer() {
+        let mut buffer = bounded::<u8>(2);
+        assert_eq!(buffer.0.capacity(), 2);
+
+        assert_eq!(buffer.1.push(&[100]), 1);
+        assert_eq!(buffer.1.push(&[200]), 1);
+        assert_eq!(buffer.1.push(&[300]), 0);
+        assert_eq!(buffer.1.push(&[400]), 0);
+
+        assert_eq!(buffer.0.len(), 2);
     }
 
     #[test]

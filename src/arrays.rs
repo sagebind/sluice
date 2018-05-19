@@ -20,15 +20,15 @@ pub fn copy<T: Copy>(src: &[T], dest: &mut [T]) -> usize {
     len
 }
 
-/// Copy as many elements as possible from a slice of slices to another.
+/// Copy as many elements as possible from a slice of slices to a slice.
 ///
 /// Returns the number of elements copied.
-pub fn copy_seq<T: Copy>(seq: &[&[T]], dest: &mut [T]) -> usize {
+pub fn copy_from_seq<T: Copy>(src_seq: &[&[T]], dest: &mut [T]) -> usize {
     let mut copied = 0;
 
-    for slice in seq {
+    for src in src_seq {
         if copied < dest.len() {
-            copied += copy(slice, &mut dest[copied..]);
+            copied += copy(src, &mut dest[copied..]);
         } else {
             break;
         }
@@ -37,33 +37,21 @@ pub fn copy_seq<T: Copy>(seq: &[&[T]], dest: &mut [T]) -> usize {
     copied
 }
 
-/// Extension trait for slices for working with wrapping ranges and indicies.
-pub trait WrappingSlice<T> {
-    /// Gets a pair of slices in the given range, wrapping around length.
-    fn wrapping_range(&self, from: usize, to: usize) -> (&[T], &[T]);
+/// Copy as many elements as possible from a slice to a slice of slices.
+///
+/// Returns the number of elements copied.
+pub fn copy_to_seq<T: Copy>(src: &[T], dest_seq: &mut [&mut [T]]) -> usize {
+    let mut copied = 0;
 
-    /// Gets a pair of mutable slices in the given range, wrapping around length.
-    fn wrapping_range_mut(&mut self, from: usize, to: usize) -> (&mut [T], &mut [T]);
-}
-
-impl<T> WrappingSlice<T> for [T] {
-    fn wrapping_range(&self, from: usize, to: usize) -> (&[T], &[T]) {
-        if from < to {
-            (&self[from..to], &[])
+    for dest in dest_seq {
+        if copied < src.len() {
+            copied += copy(&src[copied..], *dest);
         } else {
-            (&self[from..], &self[..to])
+            break;
         }
     }
 
-    fn wrapping_range_mut(&mut self, from: usize, to: usize) -> (&mut [T], &mut [T]) {
-        if from < to {
-            (&mut self[from..to], &mut [])
-        } else {
-            let (mid, right) = self.split_at_mut(from);
-            let left = mid.split_at_mut(to).0;
-            (right, left)
-        }
-    }
+    copied
 }
 
 /// A heap-allocated circular array, useful for implementing ring buffers.
@@ -118,21 +106,6 @@ impl<T> CircularArray<T> {
         }
     }
 
-    // /// Copies elements from this array into
-    // pub fn copy_to_slice(&self, dest: &mut [T]) -> usize {
-    //     if self.is_empty() {
-    //         return 0;
-    //     }
-
-    //     let slices = self.array
-    //         .wrapping_range(self.mask(self.head), self.mask(self.tail));
-
-    //     let mut copied = arrays::copy(slices.0, dest);
-    //     copied += arrays::copy(slices.1, &mut dest[copied..]);
-
-    //     copied
-    // }
-
     /// Get the internal index the given virtual index is mapped to.
     #[inline]
     fn internal_index(&self, virtual_index: usize) -> usize {
@@ -172,20 +145,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn copy_seq_with_less_elements() {
+    fn copy_from_seq_with_less_elements() {
         let chunks: [&[i32]; 3] = [&[], &[1, 2], &[3]];
         let mut dest = [0; 6];
 
-        assert_eq!(copy_seq(&chunks, &mut dest), 3);
+        assert_eq!(copy_from_seq(&chunks, &mut dest), 3);
         assert_eq!(&dest, &[1, 2, 3, 0, 0, 0]);
     }
 
     #[test]
-    fn copy_seq_with_more_elements() {
+    fn copy_from_seq_with_more_elements() {
         let chunks: [&[i32]; 5] = [&[], &[1, 2], &[], &[3], &[4, 5, 6]];
         let mut dest = [0; 4];
 
-        assert_eq!(copy_seq(&chunks, &mut dest), 4);
+        assert_eq!(copy_from_seq(&chunks, &mut dest), 4);
         assert_eq!(&dest, &[1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn copy_to_seq_with_less_elements() {
+        let src = [1, 2, 3];
+        let mut dest_1 = [0; 1];
+        let mut dest_2 = [0; 4];
+
+        {
+            let mut dest: [&mut [u8]; 2] = [&mut dest_1, &mut dest_2];
+            assert_eq!(copy_to_seq(&src, &mut dest), 3);
+        }
+
+        assert_eq!(&dest_1, &[1]);
+        assert_eq!(&dest_2, &[2, 3, 0, 0]);
+    }
+
+    #[test]
+    fn copy_to_seq_with_more_elements() {
+        let src = [1, 2, 3, 4];
+        let mut dest_1 = [0; 1];
+        let mut dest_2 = [0; 2];
+
+        {
+            let mut dest: [&mut [u8]; 2] = [&mut dest_1, &mut dest_2];
+            assert_eq!(copy_to_seq(&src, &mut dest), 3);
+        }
+
+        assert_eq!(&dest_1, &[1]);
+        assert_eq!(&dest_2, &[2, 3]);
     }
 }

@@ -85,7 +85,7 @@ impl<T> Buffer<T> for UnboundedBuffer<T> {
 impl<T: Copy> ReadableBuffer<T> for UnboundedBuffer<T> {
     fn copy_to(&self, dest: &mut [T]) -> usize {
         let slices = self.array.as_slices(self.head..self.tail);
-        arrays::copy_seq(&slices, dest)
+        arrays::copy_from_seq(&slices, dest)
     }
 
     fn consume(&mut self, count: usize) -> usize {
@@ -104,10 +104,8 @@ impl<T: Copy> WritableBuffer<T> for UnboundedBuffer<T> {
             self.resize(new_len);
         }
 
-        let slices = self.array.as_slices_mut(self.tail..self.head);
-
-        let mut pushed = arrays::copy(src, slices[0]);
-        pushed += arrays::copy(&src[pushed..], slices[1]);
+        let mut slices = self.array.as_slices_mut(self.tail..self.head);
+        let pushed = arrays::copy_to_seq(src, &mut slices);
 
         self.tail = self.tail.wrapping_add(pushed);
         pushed
