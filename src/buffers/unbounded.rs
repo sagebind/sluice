@@ -47,7 +47,10 @@ impl<T: Copy> UnboundedBuffer<T> {
     fn resize(&mut self, size: usize) {
         let mut array = unsafe { CircularArray::uninitialized(size) };
 
-        self.tail = self.copy_to(array.as_mut());
+        let copied = self.copy_to(array.as_mut());
+        debug_assert_eq!(copied, self.len());
+
+        self.tail = copied;
         self.head = 0;
         self.array = array;
     }
@@ -84,6 +87,10 @@ impl<T> Buffer<T> for UnboundedBuffer<T> {
 
 impl<T: Copy> ReadableBuffer<T> for UnboundedBuffer<T> {
     fn copy_to(&self, dest: &mut [T]) -> usize {
+        if self.head == self.tail {
+            return 0;
+        }
+
         let slices = self.array.as_slices(self.head..self.tail);
         arrays::copy_from_seq(&slices, dest)
     }
@@ -108,6 +115,7 @@ impl<T: Copy> WritableBuffer<T> for UnboundedBuffer<T> {
         let pushed = arrays::copy_to_seq(src, &mut slices);
 
         self.tail = self.tail.wrapping_add(pushed);
+        debug_assert_eq!(pushed, src.len());
         pushed
     }
 }
@@ -129,7 +137,7 @@ mod tests {
         assert!(buffer.is_empty());
 
         let bytes = b"hello world";
-        buffer.push(bytes);
+        assert_eq!(buffer.push(bytes), bytes.len());
 
         assert!(!buffer.is_empty());
         assert_eq!(buffer.len(), bytes.len());
@@ -139,21 +147,33 @@ mod tests {
     fn test_push_and_consume() {
         let mut buffer = UnboundedBuffer::with_capacity(12);
 
-        buffer.push(b"hello world");
+        assert_eq!(buffer.push(b"hello world"), 11);
 
         assert_eq!(buffer.consume(6), 6);
         assert_eq!(buffer.len(), 5);
 
-        buffer.push(b" hello");
+        assert_eq!(buffer.push(b" hello"), 6);
 
         assert_eq!(buffer.len(), 11);
+    }
+
+    #[test]
+    fn test_push_a_lot() {
+        let mut buffer = UnboundedBuffer::new();
+        let bytes = "heavyweight;".repeat(1000).into_bytes();
+
+        assert_eq!(buffer.len(), 0);
+        assert_eq!(buffer.push(&bytes), bytes.len());
+        assert_eq!(buffer.len(), bytes.len());
+        assert_eq!(buffer.consume(bytes.len()), bytes.len());
+        assert_eq!(buffer.len(), 0);
     }
 
     #[test]
     fn test_pull_more_than_buffer() {
         let mut buffer = UnboundedBuffer::new();
         let bytes = b"hello world";
-        buffer.push(bytes);
+        assert_eq!(buffer.push(bytes), 11);
 
         let mut dst = [0; 1024];
         assert_eq!(buffer.pull(&mut dst), bytes.len());

@@ -189,8 +189,8 @@ mod tests {
 
         assert_eq!(buffer.1.push(&[100]), 1);
         assert_eq!(buffer.1.push(&[200]), 1);
-        assert_eq!(buffer.1.push(&[300]), 0);
-        assert_eq!(buffer.1.push(&[400]), 0);
+        assert_eq!(buffer.1.push(&[210]), 0);
+        assert_eq!(buffer.1.push(&[220]), 0);
 
         assert_eq!(buffer.0.len(), 2);
     }
