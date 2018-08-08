@@ -11,3 +11,4 @@
 //! version of an I/O stream.
 mod arrays;
 pub mod buffers;
+pub mod io;

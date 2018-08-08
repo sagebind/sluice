@@ -68,6 +68,8 @@ impl<T: Copy> ReadableBuffer<T> for Reader<T> {
     }
 }
 
+unsafe impl<T: Copy> Send for Reader<T> {}
+
 /// Writing half of an atomic buffer.
 pub struct Writer<T> {
     inner: Arc<Inner<T>>,
@@ -110,6 +112,8 @@ impl<T: Copy> WritableBuffer<T> for Writer<T> {
         }
     }
 }
+
+unsafe impl<T: Copy> Send for Writer<T> {}
 
 /// Contains the shared data between the reader and writer.
 struct Inner<T> {
