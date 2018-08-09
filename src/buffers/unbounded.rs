@@ -1,5 +1,5 @@
-use arrays::{self, CircularArray};
 use buffers::{Buffer, ReadableBuffer, WritableBuffer};
+use internal::arrays::{self, CircularArray};
 
 /// Growable ring buffer.
 ///

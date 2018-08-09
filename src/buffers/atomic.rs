@@ -1,7 +1,7 @@
 //! Atomic buffers useful for producer-consumer problems.
-use arrays;
-use arrays::CircularArray;
 use buffers::{Buffer, ReadableBuffer, WritableBuffer};
+use internal::arrays;
+use internal::arrays::CircularArray;
 use std::cell::UnsafeCell;
 use std::sync::Arc;
 use std::sync::atomic::*;

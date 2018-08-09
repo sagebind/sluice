@@ -9,6 +9,8 @@
 //!
 //! In Ringtail, a _buffer_ is a queue optimized for reading and writing multiple elements in bulk, like an in-memory
 //! version of an I/O stream.
-mod arrays;
+
 pub mod buffers;
 pub mod io;
+
+mod internal;
