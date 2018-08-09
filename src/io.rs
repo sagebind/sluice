@@ -107,28 +107,28 @@ impl io::Read for PipeReader {
             return Ok(0);
         }
 
-        let len = self.buffer.pull(buf);
+        loop {
+            let len = self.buffer.pull(buf);
 
-        // Successful read.
-        if len > 0 {
-            self.full_signal.notify();
-            return Ok(len);
+            // Successful read.
+            if len > 0 {
+                self.full_signal.notify();
+                return Ok(len);
+            }
+
+            // Pipe is empty, check if it is closed.
+            if self.drop_flag.load(Ordering::SeqCst) {
+                return Ok(0);
+            }
+
+            // Pipe is empty, but we don't want to block.
+            if self.flags & FLAG_NONBLOCKING != 0 {
+                return Err(io::ErrorKind::WouldBlock.into());
+            }
+
+            // Pipe is empty, and we do want to block.
+            self.empty_signal.wait();
         }
-
-        // Pipe is empty, check if it is closed.
-        if self.drop_flag.load(Ordering::SeqCst) {
-            return Ok(0);
-        }
-
-        // Pipe is empty, but we don't want to block.
-        if self.flags & FLAG_NONBLOCKING != 0 {
-            return Err(io::ErrorKind::WouldBlock.into());
-        }
-
-        // Pipe is empty, and we do want to block.
-        self.empty_signal.wait();
-
-        Ok(self.buffer.pull(buf))
     }
 }
 
@@ -168,28 +168,28 @@ impl io::Write for PipeWriter {
             return Ok(0);
         }
 
-        // Early check for closed pipe.
-        if self.drop_flag.load(Ordering::SeqCst) {
-            return Err(io::ErrorKind::BrokenPipe.into());
+        loop {
+            // Early check for closed pipe.
+            if self.drop_flag.load(Ordering::SeqCst) {
+                return Err(io::ErrorKind::BrokenPipe.into());
+            }
+
+            let len = self.buffer.push(buf);
+
+            // Successful write.
+            if len > 0 {
+                self.empty_signal.notify();
+                return Ok(len);
+            }
+
+            // Pipe is full, but we don't want to block.
+            if self.flags & FLAG_NONBLOCKING != 0 {
+                return Err(io::ErrorKind::WouldBlock.into());
+            }
+
+            // Pipe is full, and we do want to block.
+            self.full_signal.wait();
         }
-
-        let len = self.buffer.push(buf);
-
-        // Successful write.
-        if len > 0 {
-            self.empty_signal.notify();
-            return Ok(len);
-        }
-
-        // Pipe is full, but we don't want to block.
-        if self.flags & FLAG_NONBLOCKING != 0 {
-            return Err(io::ErrorKind::WouldBlock.into());
-        }
-
-        // Pipe is full, and we do want to block.
-        self.full_signal.wait();
-
-        Ok(self.buffer.push(buf))
     }
 
     fn flush(&mut self) -> io::Result<()> {

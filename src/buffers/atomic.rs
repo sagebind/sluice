@@ -187,6 +187,17 @@ mod tests {
     }
 
     #[test]
+    fn test_push_capacity() {
+        let (mut r, mut w) = bounded::<u8>(8192);
+
+        let mut bytes = [1; 4096];
+        assert_eq!(w.push(&bytes), bytes.len());
+        assert_eq!(w.push(&bytes), bytes.len());
+        assert_eq!(r.len(), 8192);
+        assert_eq!(r.pull(&mut bytes), bytes.len());
+    }
+
+    #[test]
     fn test_push_more_than_buffer() {
         let mut buffer = bounded::<u8>(2);
         assert_eq!(buffer.0.capacity(), 2);

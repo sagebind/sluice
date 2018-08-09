@@ -8,13 +8,13 @@ use std::thread;
 
 fn pipe_read_write_benchmark(c: &mut Criterion) {
     c.bench_function("pipe_read_write", |b| {
-        let data = [1; 0x100];
+        let data = [1; 0x1000];
 
         b.iter(move || {
             let (mut r, mut w) = ringtail::io::pipe();
 
             let guard = thread::spawn(move || {
-                for _ in 0..0x10 {
+                for _ in 0..0x100 {
                     w.write_all(&data).unwrap();
                 }
             });
