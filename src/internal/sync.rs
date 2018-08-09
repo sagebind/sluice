@@ -20,22 +20,26 @@ impl Signal {
     }
 
     pub fn notify(&self) {
+        // Set the notify flag.
         self.notified.store(true, Ordering::SeqCst);
+
+        // Acquire the mutex to coordinate waking up a thread.
+        let _guard = self.lock.lock().unwrap();
         self.condvar.notify_one();
     }
 
     pub fn wait(&self) {
+        // Fast path.
         if self.notified.swap(false, Ordering::SeqCst) {
             return;
         }
 
+        // Acquire the mutex to coordinate waiting.
         let mut guard = self.lock.lock().unwrap();
-        loop {
-            guard = self.condvar.wait(guard).unwrap();
 
-            if self.notified.swap(false, Ordering::SeqCst) {
-                return;
-            }
+        // Ensure the notify flag was not just set, then wait loop to ignore spurious wake-ups.
+        while !self.notified.swap(false, Ordering::SeqCst) {
+            guard = self.condvar.wait(guard).unwrap();
         }
     }
 }

@@ -55,23 +55,23 @@ impl PipeBuilder {
     /// Create a new pipe using the current settings and return a reader and writer pair.
     pub fn build(&self) -> (PipeReader, PipeWriter) {
         let buffers = atomic::bounded(self.capacity);
-        let reader_signal = Arc::new(Signal::new());
-        let writer_signal = Arc::new(Signal::new());
+        let empty_signal = Arc::new(Signal::new());
+        let full_signal = Arc::new(Signal::new());
         let drop_flag = Arc::new(AtomicBool::default());
 
         (
             PipeReader {
                 flags: self.flags,
                 buffer: buffers.0,
-                reader_signal: reader_signal.clone(),
-                writer_signal: writer_signal.clone(),
+                empty_signal: empty_signal.clone(),
+                full_signal: full_signal.clone(),
                 drop_flag: drop_flag.clone(),
             },
             PipeWriter {
                 flags: self.flags,
                 buffer: buffers.1,
-                reader_signal: reader_signal,
-                writer_signal: writer_signal,
+                empty_signal: empty_signal,
+                full_signal: full_signal,
                 drop_flag: drop_flag,
             },
         )
@@ -82,8 +82,8 @@ impl PipeBuilder {
 pub struct PipeReader {
     flags: u8,
     buffer: atomic::Reader<u8>,
-    reader_signal: Arc<Signal>,
-    writer_signal: Arc<Signal>,
+    empty_signal: Arc<Signal>,
+    full_signal: Arc<Signal>,
     drop_flag: Arc<AtomicBool>,
 }
 
@@ -107,42 +107,35 @@ impl io::Read for PipeReader {
             return Ok(0);
         }
 
-        loop {
-            let len = self.buffer.pull(buf);
-            // println!("reader: signaling writer");
-            self.writer_signal.notify();
+        let len = self.buffer.pull(buf);
 
-            // Successful read.
-            if len > 0 {
-                return Ok(len);
-            }
-
-            // Pipe is closed.
-            if Arc::strong_count(&self.writer_signal) == 1 {
-                return Ok(0);
-            }
-
-            if self.drop_flag.load(Ordering::SeqCst) {
-                return Ok(0);
-            }
-
-            // Pipe is empty, but we don't want to block.
-            if self.flags & FLAG_NONBLOCKING != 0 {
-                return Err(io::ErrorKind::WouldBlock.into());
-            }
-
-            // Pipe is empty, and we do want to block.
-            // println!("reader: waiting");
-            self.reader_signal.wait();
-            // println!("reader: woke up");
+        // Successful read.
+        if len > 0 {
+            self.full_signal.notify();
+            return Ok(len);
         }
+
+        // Pipe is empty, check if it is closed.
+        if self.drop_flag.load(Ordering::SeqCst) {
+            return Ok(0);
+        }
+
+        // Pipe is empty, but we don't want to block.
+        if self.flags & FLAG_NONBLOCKING != 0 {
+            return Err(io::ErrorKind::WouldBlock.into());
+        }
+
+        // Pipe is empty, and we do want to block.
+        self.empty_signal.wait();
+
+        Ok(self.buffer.pull(buf))
     }
 }
 
 impl Drop for PipeReader {
     fn drop(&mut self) {
         self.drop_flag.store(true, Ordering::SeqCst);
-        self.writer_signal.notify();
+        self.full_signal.notify();
     }
 }
 
@@ -150,8 +143,8 @@ impl Drop for PipeReader {
 pub struct PipeWriter {
     flags: u8,
     buffer: atomic::Writer<u8>,
-    reader_signal: Arc<Signal>,
-    writer_signal: Arc<Signal>,
+    empty_signal: Arc<Signal>,
+    full_signal: Arc<Signal>,
     drop_flag: Arc<AtomicBool>,
 }
 
@@ -175,35 +168,28 @@ impl io::Write for PipeWriter {
             return Ok(0);
         }
 
-        loop {
-            // Early check for closed pipe.
-            if Arc::strong_count(&self.reader_signal) == 1 {
-                return Err(io::ErrorKind::BrokenPipe.into());
-            }
-
-            if self.drop_flag.load(Ordering::SeqCst) {
-                return Err(io::ErrorKind::BrokenPipe.into());
-            }
-
-            let len = self.buffer.push(buf);
-            // println!("writer: signaling reader");
-            self.reader_signal.notify();
-
-            // Successful write.
-            if len > 0 {
-                return Ok(len);
-            }
-
-            // Pipe is full, but we don't want to block.
-            if self.flags & FLAG_NONBLOCKING != 0 {
-                return Err(io::ErrorKind::WouldBlock.into());
-            }
-
-            // Pipe is full, and we do want to block.
-            // println!("writer: waiting");
-            self.writer_signal.wait();
-            // println!("writer: woke up");
+        // Early check for closed pipe.
+        if self.drop_flag.load(Ordering::SeqCst) {
+            return Err(io::ErrorKind::BrokenPipe.into());
         }
+
+        let len = self.buffer.push(buf);
+
+        // Successful write.
+        if len > 0 {
+            self.empty_signal.notify();
+            return Ok(len);
+        }
+
+        // Pipe is full, but we don't want to block.
+        if self.flags & FLAG_NONBLOCKING != 0 {
+            return Err(io::ErrorKind::WouldBlock.into());
+        }
+
+        // Pipe is full, and we do want to block.
+        self.full_signal.wait();
+
+        Ok(self.buffer.push(buf))
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -213,9 +199,8 @@ impl io::Write for PipeWriter {
 
 impl Drop for PipeWriter {
     fn drop(&mut self) {
-        // println!("writer: closing");
         self.drop_flag.store(true, Ordering::SeqCst);
-        self.reader_signal.notify();
+        self.empty_signal.notify();
     }
 }
 
