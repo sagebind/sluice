@@ -55,24 +55,18 @@ impl PipeBuilder {
     /// Create a new pipe using the current settings and return a reader and writer pair.
     pub fn build(&self) -> (PipeReader, PipeWriter) {
         let buffers = atomic::bounded(self.capacity);
-        let empty_signal = Arc::new(Signal::new());
-        let full_signal = Arc::new(Signal::new());
-        let drop_flag = Arc::new(AtomicBool::default());
+        let shared = Arc::<PipeShared>::default();
 
         (
             PipeReader {
                 flags: self.flags,
                 buffer: buffers.0,
-                empty_signal: empty_signal.clone(),
-                full_signal: full_signal.clone(),
-                drop_flag: drop_flag.clone(),
+                shared: shared.clone(),
             },
             PipeWriter {
                 flags: self.flags,
                 buffer: buffers.1,
-                empty_signal: empty_signal,
-                full_signal: full_signal,
-                drop_flag: drop_flag,
+                shared: shared,
             },
         )
     }
@@ -82,9 +76,7 @@ impl PipeBuilder {
 pub struct PipeReader {
     flags: u8,
     buffer: atomic::Reader<u8>,
-    empty_signal: Arc<Signal>,
-    full_signal: Arc<Signal>,
-    drop_flag: Arc<AtomicBool>,
+    shared: Arc<PipeShared>,
 }
 
 impl PipeReader {
@@ -112,12 +104,12 @@ impl io::Read for PipeReader {
 
             // Successful read.
             if len > 0 {
-                self.full_signal.notify();
+                self.shared.full_signal.notify();
                 return Ok(len);
             }
 
             // Pipe is empty, check if it is closed.
-            if self.drop_flag.load(Ordering::SeqCst) {
+            if self.shared.drop_flag.load(Ordering::SeqCst) {
                 return Ok(0);
             }
 
@@ -127,15 +119,15 @@ impl io::Read for PipeReader {
             }
 
             // Pipe is empty, and we do want to block.
-            self.empty_signal.wait();
+            self.shared.empty_signal.wait();
         }
     }
 }
 
 impl Drop for PipeReader {
     fn drop(&mut self) {
-        self.drop_flag.store(true, Ordering::SeqCst);
-        self.full_signal.notify();
+        self.shared.drop_flag.store(true, Ordering::SeqCst);
+        self.shared.full_signal.notify();
     }
 }
 
@@ -143,9 +135,7 @@ impl Drop for PipeReader {
 pub struct PipeWriter {
     flags: u8,
     buffer: atomic::Writer<u8>,
-    empty_signal: Arc<Signal>,
-    full_signal: Arc<Signal>,
-    drop_flag: Arc<AtomicBool>,
+    shared: Arc<PipeShared>,
 }
 
 impl PipeWriter {
@@ -170,7 +160,7 @@ impl io::Write for PipeWriter {
 
         loop {
             // Early check for closed pipe.
-            if self.drop_flag.load(Ordering::SeqCst) {
+            if self.shared.drop_flag.load(Ordering::SeqCst) {
                 return Err(io::ErrorKind::BrokenPipe.into());
             }
 
@@ -178,7 +168,7 @@ impl io::Write for PipeWriter {
 
             // Successful write.
             if len > 0 {
-                self.empty_signal.notify();
+                self.shared.empty_signal.notify();
                 return Ok(len);
             }
 
@@ -188,7 +178,7 @@ impl io::Write for PipeWriter {
             }
 
             // Pipe is full, and we do want to block.
-            self.full_signal.wait();
+            self.shared.full_signal.wait();
         }
     }
 
@@ -199,9 +189,17 @@ impl io::Write for PipeWriter {
 
 impl Drop for PipeWriter {
     fn drop(&mut self) {
-        self.drop_flag.store(true, Ordering::SeqCst);
-        self.empty_signal.notify();
+        self.shared.drop_flag.store(true, Ordering::SeqCst);
+        self.shared.empty_signal.notify();
     }
+}
+
+/// Used to coordinate synchronization between both ends of a pipe.
+#[derive(Default)]
+struct PipeShared {
+    empty_signal: Signal,
+    full_signal: Signal,
+    drop_flag: AtomicBool,
 }
 
 #[cfg(test)]

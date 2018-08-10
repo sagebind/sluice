@@ -11,8 +11,8 @@ pub struct Signal {
     waiting: AtomicUsize,
 }
 
-impl Signal {
-    pub fn new() -> Self {
+impl Default for Signal {
+    fn default() -> Self {
         Self {
             lock: Mutex::new(()),
             condvar: Condvar::new(),
@@ -20,7 +20,9 @@ impl Signal {
             waiting: AtomicUsize::default(),
         }
     }
+}
 
+impl Signal {
     pub fn notify(&self) {
         // Set the notify flag.
         self.notified.store(true, Ordering::SeqCst);
