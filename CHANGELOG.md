@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 - 2018-08-09
+
+- Added a new `io` module featuring in-memory pipes. These pipes work similar to I/O streams but are based on an atomic ring buffer internally.
+
 ## 0.2.2 - 2018-08-03
 
 - Fixed an issue when resizing an unbounded buffer that is empty that resulted in the buffer length being reported incorrectly.
