@@ -14,7 +14,7 @@ fn pipe_read_write_benchmark(c: &mut Criterion) {
             let (mut r, mut w) = ringtail::io::pipe();
 
             let guard = thread::spawn(move || {
-                for _ in 0..0x100 {
+                for _ in 0..0x10 {
                     w.write_all(&data).unwrap();
                 }
             });
