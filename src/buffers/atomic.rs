@@ -1,7 +1,7 @@
 //! Atomic buffers useful for producer-consumer problems.
-use arrays;
-use arrays::CircularArray;
 use buffers::{Buffer, ReadableBuffer, WritableBuffer};
+use internal::arrays;
+use internal::arrays::CircularArray;
 use std::cell::UnsafeCell;
 use std::sync::Arc;
 use std::sync::atomic::*;
@@ -68,6 +68,8 @@ impl<T: Copy> ReadableBuffer<T> for Reader<T> {
     }
 }
 
+unsafe impl<T: Copy> Send for Reader<T> {}
+
 /// Writing half of an atomic buffer.
 pub struct Writer<T> {
     inner: Arc<Inner<T>>,
@@ -110,6 +112,8 @@ impl<T: Copy> WritableBuffer<T> for Writer<T> {
         }
     }
 }
+
+unsafe impl<T: Copy> Send for Writer<T> {}
 
 /// Contains the shared data between the reader and writer.
 struct Inner<T> {
@@ -180,6 +184,17 @@ mod tests {
 
         assert_eq!(buffer.0.len(), bytes.len());
         assert_eq!(buffer.1.len(), bytes.len());
+    }
+
+    #[test]
+    fn test_push_capacity() {
+        let (mut r, mut w) = bounded::<u8>(8192);
+
+        let mut bytes = [1; 4096];
+        assert_eq!(w.push(&bytes), bytes.len());
+        assert_eq!(w.push(&bytes), bytes.len());
+        assert_eq!(r.len(), 8192);
+        assert_eq!(r.pull(&mut bytes), bytes.len());
     }
 
     #[test]

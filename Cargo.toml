@@ -7,3 +7,10 @@ license = "MIT"
 keywords = ["buffer", "fifo", "queue"]
 categories = ["data-structures", "concurrency"]
 repository = "https://github.com/sagebind/ringtail"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "pipes"
+harness = false
