@@ -1,21 +1,12 @@
-# Ringtail
+# Sluice
 
-Efficient ring buffer implementations for byte buffers, FIFO queues, and SPSC channels.
+Asynchronous byte buffers and pipes for concurrent I/O programming.
 
-[![Crates.io](https://img.shields.io/crates/v/ringtail.svg)](https://crates.io/crates/ringtail)
-[![Documentation](https://docs.rs/ringtail/badge.svg)](https://docs.rs/ringtail)
+[![Crates.io](https://img.shields.io/crates/v/sluice.svg)](https://crates.io/crates/sluice)
+[![Documentation](https://docs.rs/sluice/badge.svg)](https://docs.rs/sluice)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-[Documentation](https://docs.rs/ringtail)
-
-## Installation
-
-Add this to your Cargo.toml file:
-
-```toml
-[dependencies]
-ringtail = "0.2"
-```
+[Documentation](https://docs.rs/sluice)
 
 ## License
 
