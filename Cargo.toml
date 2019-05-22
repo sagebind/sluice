@@ -10,3 +10,13 @@ readme = "README.md"
 keywords = ["buffer", "pipe", "channel"]
 categories = ["asynchronous", "concurrency", "data-structures"]
 license = "MIT"
+
+[dependencies]
+futures-preview = "0.3.0-alpha.16"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "chunked_pipe"
+harness = false
