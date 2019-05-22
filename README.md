@@ -6,8 +6,17 @@ Asynchronous byte buffers and pipes for concurrent I/O programming.
 [![Documentation](https://docs.rs/sluice/badge.svg)](https://docs.rs/sluice)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-[Documentation](https://docs.rs/sluice)
+## [Documentation]
+
+Check the [documentation] for up-to-date usage and examples.
+
+## Requirements
+
+Currently Sluice requires a nightly Rust compiler as it uses stdlib futures, and uses async/await in tests and benchmarks.
 
 ## License
 
 This library is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
+
+
+[Documentation]: https://docs.rs/sluice

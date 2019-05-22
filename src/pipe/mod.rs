@@ -1,3 +1,8 @@
+//! Asynchronous in-memory byte buffers aimed at producer-consumer problems.
+//!
+//! Pipes are like byte-oriented channels that implement I/O traits for reading
+//! and writing.
+
 use futures::prelude::*;
 use std::io;
 use std::pin::Pin;
@@ -5,14 +10,17 @@ use std::task::*;
 
 mod chunked;
 
-/// Creates a new asynchronous pipe implemented using a pool of growable buffers
-/// that allow writing a single chunk of any size at a time.
+/// How many chunks should be available in a chunked pipe. Default is 4, which
+/// strikes a good balance of low memory usage and throughput.
+const DEFAULT_CHUNK_COUNT: usize = 4;
+
+/// Creates a new asynchronous pipe with the default configuration.
 ///
-/// This implementation guarantees that when writing a slice of bytes, either
-/// the entire slice is written at once or not at all. Slices will never be
-/// partially written.
-pub fn chunked_pipe() -> (PipeReader, PipeWriter) {
-    let (reader, writer) = chunked::new(8);
+/// The default implementation guarantees that when writing a slice of bytes,
+/// either the entire slice is written at once or not at all. Slices will never
+/// be partially written.
+pub fn pipe() -> (PipeReader, PipeWriter) {
+    let (reader, writer) = chunked::new(DEFAULT_CHUNK_COUNT);
 
     (
         PipeReader {

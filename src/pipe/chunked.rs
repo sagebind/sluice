@@ -4,10 +4,9 @@
 //! amount of memory. Setting a fixed memory limit also gives you a degree of
 //! flow control if the producer ends up being faster than the consumer.
 //!
-//! But for chttp a ring buffer will not work because of how curl's write
-//! callbacks are designed. Curl has its own internal buffer management, which
-//! we borrow a slice of when receiving data. The size of this slice is unknown,
-//! and we must consume all of it at once or none of it.
+//! But for some use cases a ring buffer will not work if an application uses
+//! its own internal buffer management and requires you to consume either all of
+//! a "chunk" of bytes, or none of it.
 //!
 //! Because of these constraints, instead we use a quite unique type of buffer
 //! that uses a fixed number of growable buffers that are exchanged back and
@@ -29,12 +28,22 @@ use std::io::{self, Cursor};
 use std::pin::Pin;
 
 /// Create a new chunked pipe with room for a fixed number of chunks.
-pub fn new(size: usize) -> (Reader, Writer) {
-    let (mut buf_pool_tx, buf_pool_rx) = mpsc::channel(size);
-    let (buf_stream_tx, buf_stream_rx) = mpsc::channel(size);
+///
+/// The `count` parameter sets how many buffers are available in the pipe at
+/// once. Smaller values will reduce the number of allocations and reallocations
+/// may be required when writing and reduce overall memory usage. Larger values
+/// reduce the amount of waiting done between chunks if you have a producer and
+/// consumer that run at different speeds.
+///
+/// If `count` is set to 1, then the pipe is essentially serial, since only the
+/// reader or writer can operate on the single buffer at one time and cannot be
+/// run in parallel.
+pub fn new(count: usize) -> (Reader, Writer) {
+    let (mut buf_pool_tx, buf_pool_rx) = mpsc::channel(count);
+    let (buf_stream_tx, buf_stream_rx) = mpsc::channel(count);
 
     // Fill up the buffer pool.
-    for _ in 0..size {
+    for _ in 0..count {
         buf_pool_tx.try_send(Vec::new()).expect("buffer pool overflow");
     }
 

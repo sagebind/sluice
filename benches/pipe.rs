@@ -4,16 +4,17 @@
 extern crate criterion;
 
 use criterion::Criterion;
+use futures::executor::ThreadPool;
 use futures::prelude::*;
-use futures::executor::block_on;
 use std::io;
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("pipe_read_write", |b| {
+        let mut pool = ThreadPool::new().unwrap();
         let data = [1; 0x1000];
 
-        b.iter(move || {
-            let (mut reader, mut writer) = sluice::pipe::chunked_pipe();
+        b.iter(|| {
+            let (mut reader, mut writer) = sluice::pipe::pipe();
 
             let producer = async {
                 for _ in 0..0x10 {
@@ -27,7 +28,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 reader.copy_into(&mut sink).await.unwrap();
             };
 
-            block_on(future::join(producer, consumer));
+            pool.run(future::join(producer, consumer));
         })
     });
 }
