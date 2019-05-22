@@ -12,6 +12,7 @@ categories = ["asynchronous", "concurrency", "data-structures"]
 license = "MIT"
 
 [dependencies]
+crossbeam-channel = "0.3"
 futures-preview = "0.3.0-alpha.16"
 
 [dev-dependencies]

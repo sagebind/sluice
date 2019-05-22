@@ -8,6 +8,7 @@ use std::io;
 use std::pin::Pin;
 use std::task::*;
 
+mod chunked_crossbeam;
 mod chunked;
 
 /// How many chunks should be available in a chunked pipe. Default is 4, which
