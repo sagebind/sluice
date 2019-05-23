@@ -44,7 +44,7 @@ pub fn new(count: usize) -> (Reader, Writer) {
 
     // Fill up the buffer pool.
     for _ in 0..count {
-        buf_pool_tx.try_send(Vec::new()).expect("buffer pool overflow");
+        buf_pool_tx.try_send(Cursor::new(Vec::new())).expect("buffer pool overflow");
     }
 
     let reader = Reader {
@@ -64,10 +64,10 @@ pub fn new(count: usize) -> (Reader, Writer) {
 /// The reading half of a chunked pipe.
 pub struct Reader {
     /// A channel of incoming chunks from the writer.
-    buf_pool_tx: mpsc::Sender<Vec<u8>>,
+    buf_pool_tx: mpsc::Sender<Cursor<Vec<u8>>>,
 
     /// A channel of chunk buffers that have been consumed and can be reused.
-    buf_stream_rx: mpsc::Receiver<Vec<u8>>,
+    buf_stream_rx: mpsc::Receiver<Cursor<Vec<u8>>>,
 
     /// A chunk currently being read from.
     chunk: Option<Cursor<Vec<u8>>>,
@@ -88,7 +88,7 @@ impl AsyncRead for Reader {
                 Poll::Ready(None) => return Poll::Ready(Ok(0)),
 
                 // Accept the new chunk.
-                Poll::Ready(Some(buf)) => Cursor::new(buf),
+                Poll::Ready(Some(buf)) => buf,
             }
         };
 
@@ -106,8 +106,8 @@ impl AsyncRead for Reader {
 
         // Otherwise, return it to the writer to be reused.
         else {
-            let mut chunk = chunk.into_inner();
-            chunk.clear();
+            chunk.set_position(0);
+            chunk.get_mut().clear();
 
             match self.buf_pool_tx.try_send(chunk) {
                 Ok(()) => {}
@@ -131,10 +131,10 @@ impl AsyncRead for Reader {
 /// Writing half of a chunked pipe.
 pub struct Writer {
     /// A channel of chunks to send to the reader.
-    buf_pool_rx: mpsc::Receiver<Vec<u8>>,
+    buf_pool_rx: mpsc::Receiver<Cursor<Vec<u8>>>,
 
     /// A channel of incoming buffers to write chunks to.
-    buf_stream_tx: mpsc::Sender<Vec<u8>>,
+    buf_stream_tx: mpsc::Sender<Cursor<Vec<u8>>>,
 }
 
 impl AsyncWrite for Writer {
@@ -150,7 +150,7 @@ impl AsyncWrite for Writer {
             // An available buffer has been found.
             Poll::Ready(Some(mut chunk)) => {
                 // Write the buffer to the chunk.
-                chunk.extend_from_slice(buf);
+                chunk.get_mut().extend_from_slice(buf);
 
                 // Send the chunk to the reader.
                 match self.buf_stream_tx.try_send(chunk) {

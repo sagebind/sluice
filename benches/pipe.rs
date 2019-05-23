@@ -1,37 +1,36 @@
 #![feature(async_await)]
 
-#[macro_use]
-extern crate criterion;
+use criterion::*;
 
-use criterion::Criterion;
-use futures::executor::ThreadPool;
-use futures::prelude::*;
-use std::io;
+fn benchmark(c: &mut Criterion) {
+    c.bench_function("write 100 1K chunks", |b| {
+        use futures::executor::ThreadPool;
+        use futures::prelude::*;
 
-fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("pipe_read_write", |b| {
         let mut pool = ThreadPool::new().unwrap();
-        let data = [1; 0x1000];
+        let data = [1; 1024];
 
-        b.iter(|| {
-            let (mut reader, mut writer) = sluice::pipe::pipe();
+        b.iter_batched(
+            sluice::pipe::pipe,
+            |(mut reader, mut writer)| {
+                let producer = async {
+                    for _ in 0..100 {
+                        writer.write_all(&data).await.unwrap();
+                    }
+                    writer.close().await.unwrap();
+                };
 
-            let producer = async {
-                for _ in 0..0x10 {
-                    writer.write_all(&data).await.unwrap();
-                }
-                writer.close().await.unwrap();
-            };
+                let consumer = async {
+                    let mut sink = std::io::sink();
+                    reader.copy_into(&mut sink).await.unwrap();
+                };
 
-            let consumer = async {
-                let mut sink = io::sink();
-                reader.copy_into(&mut sink).await.unwrap();
-            };
-
-            pool.run(future::join(producer, consumer));
-        })
+                pool.run(future::join(producer, consumer));
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(benches, benchmark);
 criterion_main!(benches);
