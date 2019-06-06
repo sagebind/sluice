@@ -117,7 +117,17 @@ impl AsyncRead for Reader {
                     // of buffers, so this can never happen.
                     if e.is_full() {
                         panic!("buffer pool overflow")
-                    } else {
+                    }
+
+                    // If the writer disconnects, then we'll just discard this
+                    // buffer and any subsequent buffers until we've read
+                    // everything still in the pipe.
+                    else if e.is_disconnected() {
+                        // Nothing!
+                    }
+
+                    // Some other error occurred.
+                    else {
                         return Poll::Ready(Err(io::ErrorKind::BrokenPipe.into()));
                     }
                 }
@@ -193,6 +203,23 @@ mod tests {
             let mut dest = [0; 5];
             assert_eq!(reader.read(&mut dest).await.unwrap(), 5);
             assert_eq!(&dest, b"hello");
-        });
+        })
+    }
+
+    #[test]
+    fn reader_still_drainable_after_writer_disconnects() {
+        block_on(async {
+            let (mut reader, mut writer) = new(1);
+
+            writer.write_all(b"hello").await.unwrap();
+
+            drop(writer);
+
+            let mut dest = [0; 5];
+            assert_eq!(reader.read(&mut dest).await.unwrap(), 5);
+            assert_eq!(&dest, b"hello");
+
+            assert_eq!(reader.read(&mut dest).await.unwrap(), 0);
+        })
     }
 }
