@@ -8,6 +8,17 @@
 //!
 //! See the `pipe` module for details.
 
+#![deny(unsafe_code)]
+#![warn(
+    future_incompatible,
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    unused,
+    clippy::all,
+)]
+
 #![cfg_attr(feature = "nightly", feature(async_await))]
 
 pub mod pipe;

@@ -37,7 +37,7 @@ use std::pin::Pin;
 /// If `count` is set to 1, then the pipe is essentially serial, since only the
 /// reader or writer can operate on the single buffer at one time and cannot be
 /// run in parallel.
-pub fn new(count: usize) -> (Reader, Writer) {
+pub(crate) fn new(count: usize) -> (Reader, Writer) {
     let (mut buf_pool_tx, buf_pool_rx) = mpsc::channel(count);
     let (buf_stream_tx, buf_stream_rx) = mpsc::channel(count);
 
@@ -61,7 +61,7 @@ pub fn new(count: usize) -> (Reader, Writer) {
 }
 
 /// The reading half of a chunked pipe.
-pub struct Reader {
+pub(crate) struct Reader {
     /// A channel of incoming chunks from the writer.
     buf_pool_tx: mpsc::Sender<Cursor<Vec<u8>>>,
 
@@ -73,7 +73,7 @@ pub struct Reader {
 }
 
 impl AsyncRead for Reader {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
         // Fetch the chunk to read from. If we already have one from a previous
         // read, use that, otherwise receive the next chunk from the writer.
         let mut chunk = match self.chunk.take() {
@@ -138,7 +138,7 @@ impl AsyncRead for Reader {
 }
 
 /// Writing half of a chunked pipe.
-pub struct Writer {
+pub(crate) struct Writer {
     /// A channel of chunks to send to the reader.
     buf_pool_rx: mpsc::Receiver<Cursor<Vec<u8>>>,
 
@@ -147,7 +147,7 @@ pub struct Writer {
 }
 
 impl AsyncWrite for Writer {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context, buf: &[u8]) -> Poll<io::Result<usize>> {
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
         // Attempt to grab an available buffer to write the chunk to.
         match self.buf_pool_rx.poll_next_unpin(cx) {
             // Wait for the reader to finish reading a chunk.
@@ -177,11 +177,11 @@ impl AsyncWrite for Writer {
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _: &mut Context) -> Poll<io::Result<()>> {
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
         Poll::Ready(Ok(()))
     }
 
-    fn poll_close(mut self: Pin<&mut Self>, _: &mut Context) -> Poll<io::Result<()>> {
+    fn poll_close(mut self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
         self.buf_stream_tx.close_channel();
         Poll::Ready(Ok(()))
     }
