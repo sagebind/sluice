@@ -11,8 +11,7 @@
 //! Because of these constraints, instead we use a quite unique type of buffer
 //! that uses a fixed number of growable buffers that are exchanged back and
 //! forth between a producer and a consumer. Since each buffer is a vector, it
-//! can grow to whatever size is required of it in order to fit a single curl
-//! chunk.
+//! can grow to whatever size is required of it in order to fit a single chunk.
 //!
 //! To avoid the constant allocation overhead of creating a new buffer for every
 //! chunk, after a consumer finishes reading from a buffer, it returns the
@@ -188,7 +187,7 @@ impl AsyncWrite for Writer {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "nightly"))]
 mod tests {
     use futures::executor::block_on;
     use super::*;

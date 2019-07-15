@@ -1,9 +1,9 @@
-workflow "Main" {
+workflow "build" {
   on = "push"
-  resolves = ["Test"]
+  resolves = ["test-nightly"]
 }
 
-action "Test" {
-  uses = "docker://rust"
-  args = "cargo test"
+action "test-nightly" {
+  uses = "docker://rustlang/rust:nightly"
+  args = "cargo test --features nightly"
 }

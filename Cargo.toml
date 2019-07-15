@@ -11,8 +11,11 @@ keywords = ["buffer", "pipe", "channel"]
 categories = ["asynchronous", "concurrency", "data-structures"]
 license = "MIT"
 
+[features]
+nightly = []
+
 [dependencies]
-futures-preview = "0.3.0-alpha.16"
+futures-preview = "0.3.0-alpha.17"
 
 [dev-dependencies]
 criterion = "0.2"
