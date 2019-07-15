@@ -8,6 +8,6 @@
 //!
 //! See the `pipe` module for details.
 
-#![cfg_attr(test, feature(async_await))]
+#![cfg_attr(feature = "nightly", feature(async_await))]
 
 pub mod pipe;
