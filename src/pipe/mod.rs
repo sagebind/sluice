@@ -3,11 +3,11 @@
 //! Pipes are like byte-oriented channels that implement I/O traits for reading
 //! and writing.
 
-use futures::prelude::*;
+use futures_io::{AsyncRead, AsyncWrite};
 use std::fmt;
 use std::io;
 use std::pin::Pin;
-use std::task::*;
+use std::task::{Context, Poll};
 
 mod chunked;
 

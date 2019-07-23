@@ -20,11 +20,12 @@
 //! that happen during reads and writes are occasional reallocation for each
 //! individual vector to fit larger chunks of bytes that don't already fit.
 
-use futures::channel::mpsc;
-use futures::prelude::*;
-use futures::task::*;
+use futures_channel::mpsc;
+use futures_core::Stream;
+use futures_io::{AsyncRead, AsyncWrite};
 use std::io::{self, Cursor};
 use std::pin::Pin;
+use std::task::{Context, Poll};
 
 /// Create a new chunked pipe with room for a fixed number of chunks.
 ///
@@ -79,7 +80,7 @@ impl AsyncRead for Reader {
         let mut chunk = match self.chunk.take() {
             Some(chunk) => chunk,
 
-            None => match self.buf_stream_rx.poll_next_unpin(cx) {
+            None => match Pin::new(&mut self.buf_stream_rx).poll_next(cx) {
                 // Wait for a new chunk to be delivered.
                 Poll::Pending => return Poll::Pending,
 
@@ -156,7 +157,7 @@ impl AsyncWrite for Writer {
         }
 
         // Attempt to grab an available buffer to write the chunk to.
-        match self.buf_pool_rx.poll_next_unpin(cx) {
+        match Pin::new(&mut self.buf_pool_rx).poll_next(cx) {
             // Wait for the reader to finish reading a chunk.
             Poll::Pending => Poll::Pending,
 
@@ -197,6 +198,8 @@ impl AsyncWrite for Writer {
 #[cfg(all(test, feature = "nightly"))]
 mod tests {
     use futures::executor::block_on;
+    use futures::prelude::*;
+    use futures::task::noop_waker;
     use super::*;
 
     #[test]
@@ -234,7 +237,7 @@ mod tests {
         let waker = noop_waker();
         let mut context = Context::from_waker(&waker);
 
-        let (mut reader, mut writer) = new(2);
+        let (reader, mut writer) = new(2);
 
         drop(reader);
 
