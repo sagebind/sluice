@@ -44,7 +44,9 @@ pub(crate) fn new(count: usize) -> (Reader, Writer) {
 
     // Fill up the buffer pool.
     for _ in 0..count {
-        buf_pool_tx.try_send(Cursor::new(Vec::new())).expect("buffer pool overflow");
+        buf_pool_tx
+            .try_send(Cursor::new(Vec::new()))
+            .expect("buffer pool overflow");
     }
 
     let reader = Reader {
@@ -74,7 +76,11 @@ pub(crate) struct Reader {
 }
 
 impl AsyncRead for Reader {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         // Fetch the chunk to read from. If we already have one from a previous
         // read, use that, otherwise receive the next chunk from the writer.
         let mut chunk = match self.chunk.take() {
@@ -89,7 +95,7 @@ impl AsyncRead for Reader {
 
                 // Accept the new chunk.
                 Poll::Ready(Some(buf)) => buf,
-            }
+            },
         };
 
         // Do the read.
@@ -103,7 +109,6 @@ impl AsyncRead for Reader {
         if chunk.position() < chunk.get_ref().len() as u64 {
             self.chunk = Some(chunk);
         }
-
         // Otherwise, return it to the writer to be reused.
         else {
             chunk.set_position(0);
@@ -118,14 +123,12 @@ impl AsyncRead for Reader {
                     if e.is_full() {
                         panic!("buffer pool overflow")
                     }
-
                     // If the writer disconnects, then we'll just discard this
                     // buffer and any subsequent buffers until we've read
                     // everything still in the pipe.
                     else if e.is_disconnected() {
                         // Nothing!
                     }
-
                     // Some other error occurred.
                     else {
                         return Poll::Ready(Err(io::ErrorKind::BrokenPipe.into()));
@@ -148,7 +151,11 @@ pub(crate) struct Writer {
 }
 
 impl AsyncWrite for Writer {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
         // If the pipe is closed then return prematurely, otherwise we'd be
         // spending time writing the entire buffer only to discover that it is
         // closed afterward.
@@ -197,10 +204,10 @@ impl AsyncWrite for Writer {
 
 #[cfg(all(test, feature = "nightly"))]
 mod tests {
+    use super::*;
     use futures::executor::block_on;
     use futures::prelude::*;
     use futures::task::noop_waker;
-    use super::*;
 
     #[test]
     fn read_then_write() {

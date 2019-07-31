@@ -16,9 +16,8 @@
     rust_2018_idioms,
     unreachable_pub,
     unused,
-    clippy::all,
+    clippy::all
 )]
-
 #![cfg_attr(feature = "nightly", feature(async_await))]
 
 pub mod pipe;

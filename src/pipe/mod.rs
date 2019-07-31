@@ -23,14 +23,7 @@ const DEFAULT_CHUNK_COUNT: usize = 4;
 pub fn pipe() -> (PipeReader, PipeWriter) {
     let (reader, writer) = chunked::new(DEFAULT_CHUNK_COUNT);
 
-    (
-        PipeReader {
-            inner: reader,
-        },
-        PipeWriter {
-            inner: writer,
-        },
-    )
+    (PipeReader { inner: reader }, PipeWriter { inner: writer })
 }
 
 /// The reading end of an asynchronous pipe.
@@ -39,7 +32,11 @@ pub struct PipeReader {
 }
 
 impl AsyncRead for PipeReader {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
     }
 }
@@ -56,7 +53,11 @@ pub struct PipeWriter {
 }
 
 impl AsyncWrite for PipeWriter {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 
