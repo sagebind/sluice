@@ -20,7 +20,7 @@ futures-core-preview = "0.3.0-alpha.17"
 futures-io-preview = "0.3.0-alpha.17"
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.3"
 futures-preview = "0.3.0-alpha.17"
 
 [[bench]]
