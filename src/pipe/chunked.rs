@@ -23,9 +23,9 @@
 use futures_channel::mpsc;
 use futures_core::{FusedStream, Stream};
 use futures_io::{AsyncRead, AsyncWrite};
+use futures_util::io::Cursor;
 use std::{
     io,
-    io::Cursor,
     pin::Pin,
     task::{Context, Poll},
 };

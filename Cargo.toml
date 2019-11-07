@@ -1,6 +1,6 @@
 [package]
 name = "sluice"
-version = "0.4.2"
+version = "0.5.0"
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 edition = "2018"
 description = "Efficient ring buffer for byte buffers, FIFO queues, and SPSC channels"
@@ -11,17 +11,15 @@ keywords = ["buffer", "pipe", "channel"]
 categories = ["asynchronous", "concurrency", "data-structures"]
 license = "MIT"
 
-[features]
-nightly = []
-
 [dependencies]
-futures-channel-preview = "0.3.0-alpha.18"
-futures-core-preview = "0.3.0-alpha.18"
-futures-io-preview = "0.3.0-alpha.18"
+futures-channel = "0.3"
+futures-core = "0.3"
+futures-io = "0.3"
+futures-util = "0.3"
 
 [dev-dependencies]
 criterion = "0.3"
-futures-preview = "0.3.0-alpha.18"
+futures = "0.3"
 
 [[bench]]
 name = "pipe"
