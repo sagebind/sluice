@@ -19,6 +19,4 @@
     clippy::all,
 )]
 
-#![cfg_attr(feature = "nightly", feature(async_await))]
-
 pub mod pipe;

@@ -3,7 +3,7 @@
 //! Pipes are like byte-oriented channels that implement I/O traits for reading
 //! and writing.
 
-use futures_io::{AsyncRead, AsyncWrite};
+use futures_io::{AsyncBufRead, AsyncRead, AsyncWrite};
 use std::fmt;
 use std::io;
 use std::pin::Pin;
@@ -23,14 +23,7 @@ const DEFAULT_CHUNK_COUNT: usize = 4;
 pub fn pipe() -> (PipeReader, PipeWriter) {
     let (reader, writer) = chunked::new(DEFAULT_CHUNK_COUNT);
 
-    (
-        PipeReader {
-            inner: reader,
-        },
-        PipeWriter {
-            inner: writer,
-        },
-    )
+    (PipeReader { inner: reader }, PipeWriter { inner: writer })
 }
 
 /// The reading end of an asynchronous pipe.
@@ -39,8 +32,23 @@ pub struct PipeReader {
 }
 
 impl AsyncRead for PipeReader {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_read(cx, buf)
+    }
+}
+
+impl AsyncBufRead for PipeReader {
+    #[allow(unsafe_code)]
+    fn poll_fill_buf(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<&[u8]>> {
+        unsafe { self.map_unchecked_mut(|s| &mut s.inner) }.poll_fill_buf(cx)
+    }
+
+    fn consume(mut self: Pin<&mut Self>, amt: usize) {
+        Pin::new(&mut self.inner).consume(amt)
     }
 }
 
@@ -56,7 +64,11 @@ pub struct PipeWriter {
 }
 
 impl AsyncWrite for PipeWriter {
-    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
         Pin::new(&mut self.inner).poll_write(cx, buf)
     }
 

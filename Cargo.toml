@@ -23,6 +23,8 @@ default-features = false
 [dev-dependencies]
 criterion = "0.3"
 futures = "0.3"
+quickcheck = "0.9"
+quickcheck_macros = "0.9"
 
 [[bench]]
 name = "pipe"
