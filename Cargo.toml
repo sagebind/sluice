@@ -19,6 +19,7 @@ futures-io = "0.3"
 [dependencies.futures-util]
 version = "0.3"
 default-features = false
+features = ["io"]
 
 [dev-dependencies]
 criterion = "0.3"
