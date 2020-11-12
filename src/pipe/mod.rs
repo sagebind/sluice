@@ -4,10 +4,12 @@
 //! and writing.
 
 use futures_io::{AsyncBufRead, AsyncRead, AsyncWrite};
-use std::fmt;
-use std::io;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    fmt,
+    io,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 mod chunked;
 

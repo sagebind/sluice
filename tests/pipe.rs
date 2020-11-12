@@ -97,12 +97,12 @@ fn read_write_chunks_random(chunks: u16) {
 
         join!(
             async {
-                for chunk in 0..chunks {
+                for _chunk in 0..chunks {
                     writer.write_all(&data).await.unwrap();
                 }
             },
             async {
-                for chunk in 0..chunks {
+                for _chunk in 0..chunks {
                     let mut buf = data.clone();
                     reader.read(&mut buf).await.unwrap();
                     assert_eq!(&buf[..], &data[..]);
