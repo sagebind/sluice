@@ -1,6 +1,6 @@
 [package]
 name = "sluice"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 edition = "2018"
 description = "Efficient ring buffer for byte buffers, FIFO queues, and SPSC channels"
