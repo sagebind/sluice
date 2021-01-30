@@ -169,6 +169,16 @@ impl AsyncBufRead for Reader {
     }
 }
 
+impl Drop for Reader {
+    fn drop(&mut self) {
+        // Ensure we close the primary stream first before the pool stream so
+        // that the writer knows the pipe is closed before trying to poll the
+        // pool channel.
+        self.buf_stream_rx.close();
+        self.buf_pool_tx.close_channel();
+    }
+}
+
 /// Writing half of a chunked pipe.
 pub(crate) struct Writer {
     /// A channel of chunks to send to the reader.
@@ -184,16 +194,16 @@ impl AsyncWrite for Writer {
         cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
+        // If the reading end of the pipe is closed then return an error now,
+        // otherwise we'd be spending time writing the entire buffer only to
+        // discover that it is closed afterward.
+        if self.buf_stream_tx.is_closed() {
+            return Poll::Ready(Err(io::ErrorKind::BrokenPipe.into()));
+        }
+
         // Do not send empty buffers through the rotation.
         if buf.is_empty() {
             return Poll::Ready(Ok(0));
-        }
-
-        // If the pipe is closed then return prematurely, otherwise we'd be
-        // spending time writing the entire buffer only to discover that it is
-        // closed afterward.
-        if self.buf_stream_tx.is_closed() {
-            return Poll::Ready(Err(io::ErrorKind::BrokenPipe.into()));
         }
 
         // Attempt to grab an available buffer to write the chunk to.
