@@ -90,7 +90,7 @@ fn pipe_lots_of_data() {
 }
 
 #[quickcheck]
-fn read_write_chunks_random(chunks: u16) {
+fn read_write_chunks_random(chunks: u8) {
     block_on(async {
         let data = [0; 8192];
         let (mut reader, mut writer) = pipe();
