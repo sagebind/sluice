@@ -12,7 +12,7 @@ categories = ["asynchronous", "concurrency", "data-structures"]
 license = "MIT"
 
 [dependencies]
-futures-channel = "0.3"
+async-channel = "1"
 futures-core = "0.3"
 futures-io = "0.3"
 
