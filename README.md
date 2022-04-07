@@ -14,7 +14,7 @@ Check the [documentation] for up-to-date usage and examples.
 
 Special thanks to sponsors of my open-source work!
 
-<!-- sponsors --><a href="https://github.com/da-moon"><img src="https://github.com/da-moon.png" width="60px" alt="da-moon" /></a><!-- sponsors -->
+<!-- sponsors --><!-- sponsors -->
 
 ## License
 
