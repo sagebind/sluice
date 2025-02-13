@@ -14,7 +14,7 @@ Check the [documentation] for up-to-date usage and examples.
 
 ## Minimum supported Rust version
 
-The minimum supported Rust version (or _MSRV_) for Castaway is **stable Rust 1.66 or greater**, meaning we only guarantee that Castaway will compile if you use a rustc version of at least 1.66.
+The minimum supported Rust version (or _MSRV_) for this crate is **stable Rust 1.66 or greater**, meaning we only guarantee that this crate will compile if you use a rustc version of at least 1.66.
 
 ## Sponsors
 
