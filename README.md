@@ -6,7 +6,7 @@ Asynchronous byte buffers and pipes for concurrent I/O programming.
 [![Documentation](https://docs.rs/sluice/badge.svg)](https://docs.rs/sluice)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 [![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.66+-yellow.svg)](#minimum-supported-rust-version)
-[![Build](https://github.com/sagebind/sluice/workflows/ci/badge.svg)](https://github.com/sagebind/sluice/actions)
+[![Build](https://github.com/sagebind/sluice/workflows/build/badge.svg)](https://github.com/sagebind/sluice/actions)
 
 ## [Documentation]
 
