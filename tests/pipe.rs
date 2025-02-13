@@ -104,7 +104,7 @@ fn read_write_chunks_random(chunks: u8) {
             async {
                 for _chunk in 0..chunks {
                     let mut buf = data.clone();
-                    reader.read(&mut buf).await.unwrap();
+                    let _ = reader.read(&mut buf).await.unwrap();
                     assert_eq!(&buf[..], &data[..]);
                 }
             },
