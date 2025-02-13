@@ -10,10 +10,10 @@ readme = "README.md"
 keywords = ["buffer", "pipe", "channel"]
 categories = ["asynchronous", "concurrency", "data-structures"]
 license = "MIT"
-rust-version = "1.66"
+rust-version = "1.74"
 
 [dependencies]
-async-channel = "1"
+async-channel = "2"
 futures-core = "0.3"
 futures-io = "0.3"
 

@@ -39,7 +39,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: "1.66"
+          toolchain: "1.74"
           default: true
 
       - run: cargo check
