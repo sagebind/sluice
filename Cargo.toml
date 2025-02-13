@@ -2,7 +2,7 @@
 name = "sluice"
 version = "0.5.5"
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
-edition = "2018"
+edition = "2021"
 description = "Efficient ring buffer for byte buffers, FIFO queues, and SPSC channels"
 documentation = "https://docs.rs/sluice"
 repository = "https://github.com/sagebind/sluice"
@@ -10,6 +10,7 @@ readme = "README.md"
 keywords = ["buffer", "pipe", "channel"]
 categories = ["asynchronous", "concurrency", "data-structures"]
 license = "MIT"
+rust-version = "1.66"
 
 [dependencies]
 async-channel = "1"
