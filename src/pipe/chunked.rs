@@ -24,8 +24,7 @@ use async_channel::{bounded, Sender, Receiver};
 use futures_core::{FusedStream, Stream};
 use futures_io::{AsyncBufRead, AsyncRead, AsyncWrite};
 use std::{
-    io,
-    io::{BufRead, Cursor, Write},
+    io::{self, BufRead, Cursor, Write},
     pin::Pin,
     task::{Context, Poll},
 };
@@ -54,12 +53,12 @@ pub(crate) fn new(count: usize) -> (Reader, Writer) {
 
     let reader = Reader {
         buf_pool_tx,
-        buf_stream_rx,
+        buf_stream_rx: Box::pin(buf_stream_rx),
         chunk: None,
     };
 
     let writer = Writer {
-        buf_pool_rx,
+        buf_pool_rx: Box::pin(buf_pool_rx),
         buf_stream_tx,
     };
 
@@ -72,7 +71,7 @@ pub(crate) struct Reader {
     buf_pool_tx: Sender<Cursor<Vec<u8>>>,
 
     /// A channel of chunk buffers that have been consumed and can be reused.
-    buf_stream_rx: Receiver<Cursor<Vec<u8>>>,
+    buf_stream_rx: Pin<Box<Receiver<Cursor<Vec<u8>>>>>,
 
     /// A chunk currently being read from.
     chunk: Option<Cursor<Vec<u8>>>,
@@ -141,7 +140,7 @@ impl AsyncBufRead for Reader {
                 return Poll::Ready(Ok(&[]));
             }
 
-            match Pin::new(&mut self.buf_stream_rx).poll_next(cx) {
+            match self.buf_stream_rx.as_mut().poll_next(cx) {
                 // Wait for a new chunk to be delivered.
                 Poll::Pending => return Poll::Pending,
 
@@ -182,7 +181,7 @@ impl Drop for Reader {
 /// Writing half of a chunked pipe.
 pub(crate) struct Writer {
     /// A channel of chunks to send to the reader.
-    buf_pool_rx: Receiver<Cursor<Vec<u8>>>,
+    buf_pool_rx: Pin<Box<Receiver<Cursor<Vec<u8>>>>>,
 
     /// A channel of incoming buffers to write chunks to.
     buf_stream_tx: Sender<Cursor<Vec<u8>>>,
@@ -207,7 +206,7 @@ impl AsyncWrite for Writer {
         }
 
         // Attempt to grab an available buffer to write the chunk to.
-        match Pin::new(&mut self.buf_pool_rx).poll_next(cx) {
+        match self.buf_pool_rx.as_mut().poll_next(cx) {
             // Wait for the reader to finish reading a chunk.
             Poll::Pending => Poll::Pending,
 
