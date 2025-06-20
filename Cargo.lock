@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "sluice"
-version = "0.5.5"
+version = "0.6.0"
 dependencies = [
  "async-channel",
  "criterion",
