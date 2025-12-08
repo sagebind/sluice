@@ -18,7 +18,7 @@ futures-core = "0.3"
 futures-io = "0.3"
 
 [dev-dependencies]
-criterion = "0.6"
+criterion = "0.8"
 futures = "0.3"
 quickcheck = "1.0"
 quickcheck_macros = "1.1"
