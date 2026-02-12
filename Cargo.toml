@@ -21,7 +21,7 @@ futures-io = "0.3"
 criterion = "0.8"
 futures = "0.3"
 quickcheck = "1.1"
-quickcheck_macros = "1.1"
+quickcheck_macros = "1.2"
 
 [[bench]]
 name = "pipe"
